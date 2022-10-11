@@ -18,22 +18,25 @@ res_path = r'results'
 analysis_path = r'analysis'
 
 def runAnalyzeAlg(dataset_name, name, dir_path, res_path, analysis_path, num_datasets, num_trials, rho, alpha, beta, lower_bound, upper_bound, true_median, 
-	function_name, hyperparameters, rerun_algs):
+	function_name, hyperparameters, rerun_algs, compare_to_nonparametric):
 	confidence_str = str(int( (1.0-alpha) * 100))
+	name_ci = '%s_%s' % (name, confidence_str)
 	if rerun_algs == True:
 		# run CIs
 		print("computing %s%% CIs" % confidence_str)
-		wrap.main('%s_%s' % (name, confidence_str), dataset_name, function_name, 
+		wrap.main(name_ci, dataset_name, function_name, 
 	          hyperparameters, num_trials,
-	          rho, lower_bound, upper_bound, alpha=alpha, beta=beta, dir_path=dir_path, res_path=res_path, num_datasets=num_datasets)
+	          rho, lower_bound, upper_bound, alpha=alpha, beta=beta, dir_path=dir_path, res_path=res_path, 
+	          num_datasets=num_datasets, compare_to_nonparametric=compare_to_nonparametric)
 	# run analysis
 	print("running analysis")
-	analysis.computeConfidenceIntervals('%s_%s' % (name, confidence_str),  
-                                      dataset_name, 'sizes', name, hyperparameters, true_median, res_path=res_path, analysis_path=analysis_path)
+	analysis.computeConfidenceIntervals(name_ci,  dataset_name, 'sizes', name, hyperparameters, true_median, res_path=res_path, 
+		analysis_path=analysis_path, compare_to_nonparametric=compare_to_nonparametric)
 
 
-def callRunAnalyzeAlgs(dataset_name_list, name, dir_path, num_datasets, num_trials, num_params, param_string, n_list, rho_list, range_center_list, range_scale_list, 
-	true_median_list, alpha_list, beta_list, quantile_list, granularity_list, function_name, hyperparameters, rerun_algs, start_param, gen_preprocess):
+def callRunAnalyzeAlgs(dataset_name_list, name, dir_path, num_datasets, num_trials, num_params, param_string, n_list, rho_list, 
+	range_center_list, range_scale_list, true_median_list, alpha_list, beta_list, quantile_list, granularity_list, function_name, 
+	hyperparameters, rerun_algs, start_param, gen_preprocess, compare_to_nonparametric):
 	# Create new hyperparameters for each param
 
 	for i in range(start_param, num_params):
@@ -91,10 +94,17 @@ def callRunAnalyzeAlgs(dataset_name_list, name, dir_path, num_datasets, num_tria
 				new_hyperparameters['a_list_lower'] = a_list_lower
 				new_hyperparameters['a_list_upper'] = a_list_upper
 
+			if name in ['Nonpriv_lognormal']:
+				lower_bound = -1*np.inf 
+				upper_bound = np.inf
+				new_hyperparameters['s'] = hyperparameters['s'][i] if type(hyperparameters['s']) is list else hyperparameters['s']
+				new_hyperparameters['loc'] = hyperparameters['loc'][i] if type(hyperparameters['loc']) is list else hyperparameters['loc']
+				new_hyperparameters['scale'] = hyperparameters['scale'][i] if type(hyperparameters['scale']) is list else hyperparameters['scale']
+
 			print("n", n, "lb, ub", lower_bound, upper_bound, "gran", granularity, "alpha", alpha, "rho", rho)
 			print("name, hyperparameters", new_name, new_hyperparameters)
 			runAnalyzeAlg(dataset_name, new_name, dir_path, res_path, analysis_path, num_datasets, num_trials, rho, alpha, beta, lower_bound, upper_bound, true_median, 
-				function_name, new_hyperparameters, rerun_algs)	
+				function_name, new_hyperparameters, rerun_algs, compare_to_nonparametric)	
 
 def isListOrArray(var):
 	t = type(var)
@@ -127,8 +137,9 @@ def gen_datasets(dataset_name_list, num_datasets, num_params, n_list, data_distr
 
 def runCIAlgs(dataset_name, num_trials=2, num_params=1, param_string='', rho=1, range_center=5, range_scale=10, alpha=0.05, beta=0.01, quantile=0.5,
 	em_granularity=0.01, granularity=0.05, alg_list=['Expmedian', 'CDFmedian', 'CDFBSmedian', 'AdaBSCDFmedian', 'BSmedian_sep'], dir_path=data_path,
-	n=300, true_median=0.0, data_distribution='lognormal', data_center=0, data_scale=1, data_skew=0, num_datasets=100, start_param=0, gen_data=False, gen_preprocess=False,
-	rerun_algs=True):
+	n=300, true_median=0.0, data_distribution='lognormal', data_center=0, data_scale=1, data_skew=0, num_datasets=100, start_param=0, gen_data=False, 
+	gen_preprocess=False, rerun_algs=True, compare_to_nonparametric=True):
+
 	# Convert all relevant (hyper)parameters to lists
 	rho_list = rho if isListOrArray(rho) else [rho]*num_params
 	range_center_list = range_center if isListOrArray(range_center) else [range_center]*num_params
@@ -153,6 +164,17 @@ def runCIAlgs(dataset_name, num_trials=2, num_params=1, param_string='', rho=1, 
 		gen_datasets(dataset_name_list, num_datasets, num_params, n_list, data_distribution, true_median_list, 
 			data_center_list, data_scale_list, data_skew_list, dir_path)
 
+	# # Nonprivate lognormal
+	name = 'Nonpriv_lognormal'
+	if name in alg_list:
+		print("starting Nonpriv lognormal")
+		# Note: variable names for our lognormal parameters are highly confusing here but this shows how they map to parameters for scipy.stats.lognorm
+		hyperparameters = {'s': data_scale, 'loc': data_center, 'scale': 1.0} # Include extra hyperparameters beyond common ones. 
+		function_name = pub.nonprivCIsLognormal
+		callRunAnalyzeAlgs(dataset_name_list, name, dir_path, num_datasets, num_trials, num_params, param_string, n_list, rho_list, range_center_list, range_scale_list, 
+			true_median_list, alpha_list, beta_list, quantile_list, granularity_list, function_name, hyperparameters, rerun_algs, start_param, gen_preprocess, compare_to_nonparametric)
+
+
 	# # Exp Mech
 	name = 'Expmedian'
 	if name in alg_list:
@@ -160,7 +182,7 @@ def runCIAlgs(dataset_name, num_trials=2, num_params=1, param_string='', rho=1, 
 		hyperparameters = {'em_granularity': em_granularity} # Include extra hyperparameters beyond common ones
 		function_name = exp_median.dpCIsExp
 		callRunAnalyzeAlgs(dataset_name_list, name, dir_path, num_datasets, num_trials, num_params, param_string, n_list, rho_list, range_center_list, range_scale_list, 
-			true_median_list, alpha_list, beta_list, quantile_list, granularity_list, function_name, hyperparameters, rerun_algs, start_param, gen_preprocess)
+			true_median_list, alpha_list, beta_list, quantile_list, granularity_list, function_name, hyperparameters, rerun_algs, start_param, gen_preprocess, compare_to_nonparametric)
 
 	# # Exp Mech
 	name = 'Expmedian_naive'
@@ -169,7 +191,7 @@ def runCIAlgs(dataset_name, num_trials=2, num_params=1, param_string='', rho=1, 
 		hyperparameters = {'em_granularity': em_granularity, 'naive': True} # Include extra hyperparameters beyond common ones
 		function_name = exp_median.dpCIsExp
 		callRunAnalyzeAlgs(dataset_name_list, name, dir_path, num_datasets, num_trials, num_params, param_string, n_list, rho_list, range_center_list, range_scale_list, 
-			true_median_list, alpha_list, beta_list, quantile_list, granularity_list, function_name, hyperparameters, rerun_algs, start_param, gen_preprocess)
+			true_median_list, alpha_list, beta_list, quantile_list, granularity_list, function_name, hyperparameters, rerun_algs, start_param, gen_preprocess, compare_to_nonparametric)
 
 	# # CDF
 	name = 'CDFmedian'
@@ -178,7 +200,7 @@ def runCIAlgs(dataset_name, num_trials=2, num_params=1, param_string='', rho=1, 
 		hyperparameters = {} # Include extra hyperparameters beyond common ones
 		function_name = cdf_median.dpCIsCDF
 		callRunAnalyzeAlgs(dataset_name_list, name, dir_path, num_datasets, num_trials, num_params, param_string, n_list, rho_list, range_center_list, range_scale_list, 
-			true_median_list, alpha_list, beta_list, quantile_list, granularity_list, function_name, hyperparameters, rerun_algs, start_param, gen_preprocess)
+			true_median_list, alpha_list, beta_list, quantile_list, granularity_list, function_name, hyperparameters, rerun_algs, start_param, gen_preprocess, compare_to_nonparametric)
 
 	# # CDF
 	name = 'CDFmedian_naive'
@@ -187,7 +209,7 @@ def runCIAlgs(dataset_name, num_trials=2, num_params=1, param_string='', rho=1, 
 		hyperparameters = {'naive': True} # Include extra hyperparameters beyond common ones
 		function_name = cdf_median.dpCIsCDF
 		callRunAnalyzeAlgs(dataset_name_list, name, dir_path, num_datasets, num_trials, num_params, param_string, n_list, rho_list, range_center_list, range_scale_list, 
-			true_median_list, alpha_list, beta_list, quantile_list, granularity_list, function_name, hyperparameters, rerun_algs, start_param, gen_preprocess)
+			true_median_list, alpha_list, beta_list, quantile_list, granularity_list, function_name, hyperparameters, rerun_algs, start_param, gen_preprocess, compare_to_nonparametric)
 
 	# # CDF with BS
 	name = 'CDFBSmedian'
@@ -196,7 +218,35 @@ def runCIAlgs(dataset_name, num_trials=2, num_params=1, param_string='', rho=1, 
 		hyperparameters = {'bs':True} # Include extra hyperparameters beyond common ones
 		function_name = cdf_median.dpCIsCDF
 		callRunAnalyzeAlgs(dataset_name_list, name, dir_path, num_datasets, num_trials, num_params, param_string, n_list, rho_list, range_center_list, range_scale_list, 
-			true_median_list, alpha_list, beta_list, quantile_list, granularity_list, function_name, hyperparameters, rerun_algs, start_param, gen_preprocess)
+			true_median_list, alpha_list, beta_list, quantile_list, granularity_list, function_name, hyperparameters, rerun_algs, start_param, gen_preprocess, compare_to_nonparametric)
+
+	# # CDF monotonic -- DEPRECATED
+	# name = 'CDFmedian_mon'
+	# if name in alg_list:
+		# print("starting CDF mon")
+		# hyperparameters = {'monotonic':True} # Include extra hyperparameters beyond common ones
+		# function_name = cdf_median.dpCIsCDF
+		# callRunAnalyzeAlgs(dataset_name_list, name, dir_path, num_datasets, num_trials, num_params, param_string, n_list, rho_list, range_center_list, range_scale_list, 
+		# 	true_median_list, alpha_list, beta_list, quantile_list, granularity_list, function_name, hyperparameters, rerun_algs, start_param, gen_preprocess, compare_to_nonparametric)
+
+	# # BS one-shot --- DEPRECATED
+	# name = 'BSmedian'
+	# if name in alg_list:
+		# print("starting BS one-shot")
+		# hyperparameters = {} # Include extra hyperparameters beyond common ones
+		# function_name = bisearch_median.dpCIsBS
+		# callRunAnalyzeAlgs(dataset_name_list, name, dir_path, num_datasets, num_trials, num_params, param_string, n_list, rho_list, range_center_list, range_scale_list, 
+		#	true_median_list, alpha_list, beta_list, quantile_list, granularity_list, function_name, hyperparameters, rerun_algs, start_param, gen_preprocess, compare_to_nonparametric)
+
+	# # BS one-shot noisy start -- DEPRECATED
+	# name = 'BSmedian_noisy_start'
+	# if name in alg_list:
+		# print("starting BS one-shot noisy start")
+		# hyperparameters = {'noisy_start':True} # Include extra hyperparameters beyond common ones
+		# function_name = bisearch_median.dpCIsBS
+		# callRunAnalyzeAlgs(dataset_name_list, name, dir_path, num_datasets, num_trials, num_params, param_string, n_list, rho_list, range_center_list, range_scale_list, 
+		#	true_median_list, alpha_list, beta_list, quantile_list, granularity_list, function_name, hyperparameters, rerun_algs, start_param, gen_preprocess, compare_to_nonparametric)
+
 	# # BS two-shot
 	name = 'BSmedian_sep'
 	if name in alg_list:
@@ -204,7 +254,7 @@ def runCIAlgs(dataset_name, num_trials=2, num_params=1, param_string='', rho=1, 
 		hyperparameters = {'separate_runs':True} # Include extra hyperparameters beyond common ones
 		function_name = bisearch_median.dpCIsBS
 		callRunAnalyzeAlgs(dataset_name_list, name, dir_path, num_datasets, num_trials, num_params, param_string, n_list, rho_list, range_center_list, range_scale_list, 
-			true_median_list, alpha_list, beta_list, quantile_list, granularity_list, function_name, hyperparameters, rerun_algs, start_param, gen_preprocess)
+			true_median_list, alpha_list, beta_list, quantile_list, granularity_list, function_name, hyperparameters, rerun_algs, start_param, gen_preprocess, compare_to_nonparametric)
 
 	# # # BS two-shot reuse queries
 	name = 'BSmedian_sep_reuse_queries'
@@ -213,7 +263,16 @@ def runCIAlgs(dataset_name, num_trials=2, num_params=1, param_string='', rho=1, 
 		hyperparameters = {'separate_runs':True, 'reuse_queries':True} # Include extra hyperparameters beyond common ones
 		function_name = bisearch_median.dpCIsBS
 		callRunAnalyzeAlgs(dataset_name_list, name, dir_path, num_datasets, num_trials, num_params, param_string, n_list, rho_list, range_center_list, range_scale_list, 
-			true_median_list, alpha_list, beta_list, quantile_list, granularity_list, function_name, hyperparameters, rerun_algs, start_param, gen_preprocess)
+			true_median_list, alpha_list, beta_list, quantile_list, granularity_list, function_name, hyperparameters, rerun_algs, start_param, gen_preprocess, compare_to_nonparametric)
+
+	# # BS two-shot noisy start
+	# name = 'BSmedian_sep_noisy_start'
+	# if name in alg_list:
+		# print("starting BS two-shot noisy start")
+		# hyperparameters = {'separate_runs':True, 'noisy_start':True} # Include extra hyperparameters beyond common ones
+		# function_name = bisearch_median.dpCIsBS
+		# callRunAnalyzeAlgs(dataset_name_list, name, dir_path, num_datasets, num_trials, num_params, param_string, n_list, rho_list, range_center_list, range_scale_list, 
+		#	true_median_list, alpha_list, beta_list, quantile_list, granularity_list, function_name, hyperparameters, rerun_algs, start_param, gen_preprocess, compare_to_nonparametric)
 
 	# # # Adaptive BS two-shot
 	name = 'AdaBSmedian_sep'
@@ -222,7 +281,7 @@ def runCIAlgs(dataset_name, num_trials=2, num_params=1, param_string='', rho=1, 
 		hyperparameters = {'separate_runs':True, 'adaptive':True} # Include extra hyperparameters beyond common ones
 		function_name = bisearch_median.dpCIsBS
 		callRunAnalyzeAlgs(dataset_name_list, name, dir_path, num_datasets, num_trials, num_params, param_string, n_list, rho_list, range_center_list, range_scale_list, 
-			true_median_list, alpha_list, beta_list, quantile_list, granularity_list, function_name, hyperparameters, rerun_algs, start_param, gen_preprocess)
+			true_median_list, alpha_list, beta_list, quantile_list, granularity_list, function_name, hyperparameters, rerun_algs, start_param, gen_preprocess, compare_to_nonparametric)
 
 	# # # Adaptive BS CDF 
 	name = 'AdaBSCDFmedian_naive'
@@ -231,7 +290,7 @@ def runCIAlgs(dataset_name, num_trials=2, num_params=1, param_string='', rho=1, 
 		hyperparameters = {"naive": True} # Include extra hyperparameters beyond common ones
 		function_name = bs_cdf_median.dpCIsAdaBSCDF
 		callRunAnalyzeAlgs(dataset_name_list, name, dir_path, num_datasets, num_trials, num_params, param_string, n_list, rho_list, range_center_list, range_scale_list, 
-			true_median_list, alpha_list, beta_list, quantile_list, granularity_list, function_name, hyperparameters, rerun_algs, start_param, gen_preprocess)
+			true_median_list, alpha_list, beta_list, quantile_list, granularity_list, function_name, hyperparameters, rerun_algs, start_param, gen_preprocess, compare_to_nonparametric)
 
 	# # # Adaptive BS CDF 
 	name = 'AdaBSCDFmedian'
@@ -240,7 +299,16 @@ def runCIAlgs(dataset_name, num_trials=2, num_params=1, param_string='', rho=1, 
 		hyperparameters = {} # Include extra hyperparameters beyond common ones
 		function_name = bs_cdf_median.dpCIsAdaBSCDF
 		callRunAnalyzeAlgs(dataset_name_list, name, dir_path, num_datasets, num_trials, num_params, param_string, n_list, rho_list, range_center_list, range_scale_list, 
-			true_median_list, alpha_list, beta_list, quantile_list, granularity_list, function_name, hyperparameters, rerun_algs, start_param, gen_preprocess)
+			true_median_list, alpha_list, beta_list, quantile_list, granularity_list, function_name, hyperparameters, rerun_algs, start_param, gen_preprocess, compare_to_nonparametric)
+
+	# # BS remove nodes -- DEPRECATED
+	# name = 'BSmedian_tst'
+	# if name in alg_list:
+		# print("starting BS remove nodes")
+		# hyperparameters = {'tst':True} # Include extra hyperparameters beyond common ones
+		# function_name = bisearch_median.dpCIsBS
+		# callRunAnalyzeAlgs(dataset_nam_list, name, dir_path, num_datasets, num_trials, num_params, param_string, n_list, rho_list, range_center_list, range_scale_list, 
+		#	true_median_list, alpha_list, beta_list, quantile_list, granularity_list, function_name, hyperparameters, rerun_algs, start_param, gen_preprocess, compare_to_nonparametric)
 
 	print("finished!")
 

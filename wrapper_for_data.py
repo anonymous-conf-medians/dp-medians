@@ -9,10 +9,11 @@ from publicCI import *
 
 data_path = r'data'
 res_path = r'results'
+compare_str = ''
 
 
 def main(name, dataset_name, functionname, hyperparameters, num_trials, rho, lower_bound, upper_bound, alpha=0.05, beta=0.01, 
-    dir_path=data_path, res_path=res_path, num_datasets=100):
+    dir_path=data_path, res_path=res_path, num_datasets=100, compare_to_nonparametric=True):
     """
     This is a wrapper function that runs the given method on the child's income data on every tract in IL, 
     and saves the results as a num_tracts length array of num_trials length arrays.
@@ -44,6 +45,7 @@ def main(name, dataset_name, functionname, hyperparameters, num_trials, rho, low
     """
 
     eps = common.rho_to_eps(rho)
+    print("eps:", eps)
     i = 0
 
     assert alpha > beta and alpha < 1.0
@@ -58,14 +60,22 @@ def main(name, dataset_name, functionname, hyperparameters, num_trials, rho, low
                 i += 1
                 x = np.load(dir_path+'/'+str(file))
                 n = len(x)
-                public_ci = getConfInterval(x, n, alpha) # Compare to non-private alpha quantiles
+                if compare_to_nonparametric:
+                    public_ci = getConfInterval(x, n, alpha) # Compare to non-private, non-parametric alpha quantiles
+                    compare_str = ''
+                else: # For now, default parametric comparison is lognormal.
+                    public_ci = getLognormConfInterval(x, n, alpha) # Compare to non-private lognormal alpha quantiles
+                    compare_str = '_parametric'
                 if i < 20:
-                    hyperparameters['save_path'] = res_path+'/'+name+'_cdf_'+str(file) # for saving noisy cdfs
+                    save_path = res_path+'/'+name+'_cdf_'+str(file)
+                    # print("viz save_path:", save_path)
+                    hyperparameters['save_path'] = save_path # for saving noisy cdfs
+                    # print("nonparametric ci:", getConfInterval(x, n, alpha), "parametric_ci:", getLognormConfInterval(x, n, alpha))
                 nonpriv_beta = (alpha-beta)/(1.-beta) # compute nonprivate failure probability
-                lower_quantile, upper_quantile = getConfIntervalQuantiles(n, nonpriv_beta) # private algs take in non-private quantiles
+                lower_quantile, upper_quantile = getConfIntervalQuantiles(n, nonpriv_beta) # private algs take in expanded non-private quantiles
                 hyperparameters['lower_quantile'] = lower_quantile
                 hyperparameters['upper_quantile'] = upper_quantile
-                x_clipped = np.clip(x,lower_bound,upper_bound)
+                x_clipped = np.clip(x,lower_bound,upper_bound) # For nonpriv algs, lower and upper bound should be set to -inf, inf
 
                 allresults.append([functionname(x_clipped, lower_bound, upper_bound, eps, hyperparameters, num_trials), n, stats.median(x), public_ci])
 
@@ -79,7 +89,7 @@ def main(name, dataset_name, functionname, hyperparameters, num_trials, rho, low
     # print(allresults)
     # print([header, allresults])
 
-    savePath = '%s/%s_%s.npy' % (res_path, dataset_name, name)
+    savePath = '%s/%s_%s%s.npy' % (res_path, dataset_name, name, compare_str)
     print(savePath)
     np.save(savePath, np.array([header,allresults]))
 

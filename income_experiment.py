@@ -30,7 +30,7 @@ jitter_figs_path = "../../figs/income-experiments"
 hhtype_codes = [['1', '2', '3'], ['4', '5', '6','7']]
 hhtype_detailed_codes = [['1'], ['2'], ['3'], ['4', '5'], ['6','7']]
 hhtype_index =  4 
-hhtype_descriptions = ['Family households', 'Non-family households']
+hhtype_descriptions = ['Family \n households', 'Non-family \n households']
 hhtype_cat = ['hhtype', hhtype_index, hhtype_codes, hhtype_descriptions]
 
 # RACE: 
@@ -60,7 +60,7 @@ region_cat = ['region', region_index, region_codes, region_descriptions]
 # codes - 1-not in metro area, 2/3/4-in metro area
 metro_codes = [['1'], ['2', '3', '4']]
 metro_index = 7
-metro_descriptions = ['Not in metropolitan area', 'In metropolitan area']
+metro_descriptions = ['Not in \n metro area', 'In \n metro area']
 metro_cat = ['metro', metro_index, metro_codes, metro_descriptions]
 
 # AGE:
@@ -390,7 +390,8 @@ def flatten_nonpriv_medians(nonprivate_pop_medians_by_code):
 	return flat_nonpriv_pop_medians
 
 def run_DPmed_on_sample_incomes(name, num_trials, num_datasets, alpha, beta, rho, lower_bound, upper_bound, granularity, em_granularity, cdp, 
-	rerun_algs, start_param=0, end_param=6, use_full_household_data=False, use_jitter_data=False, dir_path=dir_path, res_path=res_path, analysis_path=analysis_path):
+	rerun_algs, start_param=0, end_param=6, use_full_household_data=False, use_jitter_data=False, dir_path=dir_path, res_path=res_path, 
+	analysis_path=analysis_path, compare_to_nonparametric=True):
 
 	if use_full_household_data:
 		dataset_name = full_dataset_name
@@ -440,10 +441,11 @@ def run_DPmed_on_sample_incomes(name, num_trials, num_datasets, alpha, beta, rho
 		print("Category", cat, "true median", true_median, "sample dataset name", sample_dataset_name)
 
 		run_CI_algs.runAnalyzeAlg(sample_dataset_name, new_name, dir_path, res_path, analysis_path, num_datasets, num_trials, rho, alpha, beta, lower_bound, upper_bound, true_median, 
-			function_name, hyperparameters, rerun_algs)
+			function_name, hyperparameters, rerun_algs, compare_to_nonparametric)
 
 def plot_DPmed_for_sample_incomes(name, num_trials, num_datasets, alpha, rho, granularity, lower_bound, upper_bound, 
-	use_full_household_data=False, use_jitter_data=False, dir_path=dir_path, res_path=res_path, analysis_path=analysis_path):
+	use_full_household_data=False, use_jitter_data=False, dir_path=dir_path, res_path=res_path, analysis_path=analysis_path, 
+	compare_to_nonparametric=True, blackwhite=True, plot_width=True, plot_coverage=False):
 	if use_full_household_data:
 		dataset_name = full_dataset_name
 	else:
@@ -456,6 +458,9 @@ def plot_DPmed_for_sample_incomes(name, num_trials, num_datasets, alpha, rho, gr
 		dataset_name = dataset_name + '_' + jitter_str
 
 	sample_dataset_name = dataset_name + '_' + sample_str
+	compare_str = '' if compare_to_nonparametric else '_parametric'
+	bw_str = 'blackwhite' if blackwhite else ''
+
 
 	flat_cats = flatten_cats()
 	names = [name]
@@ -464,18 +469,23 @@ def plot_DPmed_for_sample_incomes(name, num_trials, num_datasets, alpha, rho, gr
 	xlabel = "" # 'Characteristics'
 	labels = ['ExpMech', 'Nonprivate']
 	colors = ['indianred', 'darkslategray']
+	hatches = ['///', '\\\\']
+	styles = [{'color': colors[i], 'linestyle': '-', 'marker':'.', 'hatch': hatches[i]} for i in range(len(colors))]
 
-	title =  "" #r"ExpMech vs. Non-private Confidence Intervals ($\alpha$=%.2f, $\rho$=%.2f, $\theta$=%.2f, $\mathcal{R}$=[%s, %s])" % (alpha, rho, granularity, lower_bound, upper_bound)
-	save_path = '%s/width-boxplots-90.pdf' % (figs_path)
-	analysis_for_data.plotCIs(names, sample_dataset_name, title, x_set, xlabel, labels, alpha=alpha, file_suffix='sizes', param_string=param_string, 
-		dataset_param=True, log=False, legend_out=False, xlim=None, ylim=None, sort='byParam', save=True, save_path=save_path, ratio=False, 
-		line_plot=False, box_plot=True, analysis_path=analysis_path, colors=colors)
+	if plot_width:
+		title =  "" #r"ExpMech vs. Non-private Confidence Intervals ($\alpha$=%.2f, $\rho$=%.2f, $\theta$=%.2f, $\mathcal{R}$=[%s, %s])" % (alpha, rho, granularity, lower_bound, upper_bound)
+		save_path = '%s/width-boxplots-90-%s%s.pdf' % (figs_path, bw_str, compare_str)
+		analysis_for_data.plotCIs(names, sample_dataset_name, title, x_set, xlabel, labels, alpha=alpha, file_suffix='sizes', param_string=param_string, 
+			dataset_param=True, log=False, legend_out=False, xlim=None, ylim=None, sort='byParam', save=True, save_path=save_path, ratio=False, 
+			line_plot=False, box_plot=True, analysis_path=analysis_path, colors=colors, styles=styles, blackwhite=blackwhite, compare_to_nonparametric=compare_to_nonparametric)
 
-	title = "" # r"Coverage of ExpMech vs. Non-private Confidence Intervals ($\alpha$=%.2f, $\rho$=%.2f, $\theta$=%.2f, $\mathcal{R}$=[%s, %s])" % (alpha, rho, granularity, lower_bound, upper_bound)
-	save_path = '%s/coverage-90.pdf' % (figs_path)
-	analysis_for_data.plotCIs(names, sample_dataset_name, title, x_set, xlabel, labels, alpha=alpha, file_suffix='sizes', param_string=param_string, 
-		dataset_param=True, log=False, legend_out=False, xlim=None, ylim=None, sort='byParam', coverage=True, T=num_trials*num_datasets, save=True, 
-		save_path=save_path, ratio=False, line_plot=True, box_plot=False, analysis_path=analysis_path, colors=colors)
+	if plot_coverage:
+		title = "" # r"Coverage of ExpMech vs. Non-private Confidence Intervals ($\alpha$=%.2f, $\rho$=%.2f, $\theta$=%.2f, $\mathcal{R}$=[%s, %s])" % (alpha, rho, granularity, lower_bound, upper_bound)
+		save_path = '%s/coverage-90-%s%s.pdf' % (figs_path, bw_str, compare_str)
+		analysis_for_data.plotCIs(names, sample_dataset_name, title, x_set, xlabel, labels, alpha=alpha, file_suffix='sizes', param_string=param_string, 
+			dataset_param=True, log=False, legend_out=False, xlim=None, ylim=None, sort='byParam', coverage=True, T=num_trials*num_datasets, save=True, 
+			save_path=save_path, ratio=False, line_plot=True, box_plot=False, analysis_path=analysis_path, colors=colors, styles=styles, blackwhite=blackwhite,
+			compare_to_nonparametric=compare_to_nonparametric)
 
 # =========== Run experiment =========== 
 
@@ -517,9 +527,15 @@ cdp = True
 
 # sample_from_data(start_index, num_samples, use_jitter_data=True)
 
-# name = 'Expmedian'
-# run_DPmed_on_sample_incomes(name, num_trials, num_datasets, alpha, beta, rho, lower_bound, upper_bound, granularity, em_granularity, 
-# 	cdp, start_param=0, end_param=6, rerun_algs=True, use_jitter_data=True)
-plot_DPmed_for_sample_incomes(name, num_trials, num_datasets, alpha, rho, granularity, lower_bound, upper_bound, use_jitter_data=True)
+name = 'Expmedian'
+num_datasets = 50
+
+def run_DPmed_incomes():
+	run_DPmed_on_sample_incomes(name, num_trials, num_datasets, alpha, beta, rho, lower_bound, upper_bound, granularity, em_granularity, 
+		cdp, start_param=0, end_param=6, rerun_algs=False, use_jitter_data=True, compare_to_nonparametric=True)
+
+def plot_DPmed_incomes():
+	plot_DPmed_for_sample_incomes(name, num_trials, num_datasets, alpha, rho, granularity, lower_bound, upper_bound, 
+		use_jitter_data=True, compare_to_nonparametric=True, blackwhite=True, plot_width=True, plot_coverage=False)
 
 

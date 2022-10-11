@@ -683,7 +683,6 @@ def getVariances(tree, epsilon, cdp=True):
 
 def a_binsearch(n, qm_probs, noise_scale, a_lower, a_upper, alpha, epsilon):
     if noise_scale == 0:
-        print("noise scale was 0")
         noise_scale = 0.0001
     a_gran = alpha/10.0
     num_iters = int(np.log2((a_upper - a_lower)/a_gran))
@@ -742,8 +741,7 @@ def cdfFancyPostProcess(vals, cdf, a_list_lower, a_list_upper):
     return lower_val, upper_val
 
 def preProcessCDF(n, lower_bound, upper_bound, granularity, epsilon, alpha, cdp=True, variances=None):
-    print("Starting CDF preprocessing")
-    print("new msg")
+    print("Starting CDF preprocessing. This will take a few minutes...")
     if variances == None:
         x = list(np.linspace(lower_bound, upper_bound, num=n))
         n_bins = (upper_bound-lower_bound)//granularity + 1
@@ -768,7 +766,7 @@ def preProcessCDF(n, lower_bound, upper_bound, granularity, epsilon, alpha, cdp=
         a_i_upper = a_binsearch(n, qm_probs, noise_scale, a_lower, a_upper, alpha/2.0, epsilon)
         a_list_upper.append(a_i_upper)
         a_list_lower.append(1.0-a_i_upper)
-    print("preprocessing finished!")
+    print("CDF preprocessing finished!")
     return a_list_lower, a_list_upper, variances
 
 # Testing:

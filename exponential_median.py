@@ -60,6 +60,7 @@ def computeFancyPrivQuantiles(n, alpha, lower_bound, upper_bound, epsilon, granu
         failure_probs.append(res)
     indices = np.where(np.array(failure_probs) <= alpha/2.0)[0]
     upper_priv_quantile = (int(n/2.0) + 1 + min(indices))/float(n) if len(indices) > 0 else float(n-1)/n
+    print("Fancy quantiles:", lower_priv_quantile, upper_priv_quantile)
 
     return lower_priv_quantile, upper_priv_quantile
 
@@ -124,6 +125,7 @@ def computeFancyPrivQuantilesEfficient(n, alpha, lower_bound, upper_bound, epsil
     indices = np.where(np.array(failure_probs) <= alpha/2.0)[0]
     upper_priv_quantile = (int(n/2.0) + 1 + min(indices))/float(n) if len(indices) > 0 else float(n-1)/n
 
+    print("Fancy quantiles:", lower_priv_quantile, upper_priv_quantile)
     return lower_priv_quantile, upper_priv_quantile
 
 # Computes 1/2 eps^2-CDP median for bounded data.
@@ -150,7 +152,17 @@ def dpMedianExponential(x, lower_bound, upper_bound, epsilon, hyperparameters, n
     assert granularity > min_granularity
     assert 0.0 <= quantile <= 1.0
 
-    z = np.concatenate([x, [lower_bound, upper_bound]])
+    # Now add bookends and copies of the true quantile
+    # to get correct intervals for exponential mechanism.
+    # Add one copy of lower_bound and upper_bound
+    # If true quantile is not in the dataset, add two copies of true quantile; otherwise, add one copy.
+    # true_quantile = np.quantile(x, quantile)
+    # if true_quantile not in x:
+    #     z = np.concatenate([x, [true_quantile, true_quantile, lower_bound, upper_bound]])
+    # else:
+    #     z = np.concatenate([x, [true_quantile, lower_bound, upper_bound]])
+    z = x.copy()
+
     z.sort()
     n = len(z)
 
@@ -184,7 +196,8 @@ def dpMedianExponential(x, lower_bound, upper_bound, epsilon, hyperparameters, n
         score = -(epsilon/2) * rungheight + loglength
         scores.append(score)
         raw_scores.append(-(epsilon/2)*rungheight)
-        
+    # print("quantile:", quantile, "raw scores =", raw_scores)
+
     results = []
     for j in range(num_trials):
         # Add Gumbel noise to sample from exponential mechanism
@@ -222,13 +235,16 @@ def dpCIsExp(x, lower_bound, upper_bound, epsilon, hyperparameters, num_trials):
     t = 1.0/(n*eps_per_run) * np.log((data_range-2*granularity)/(2*granularity*beta_per_run))
     naive_lower_quantile = max(0.0, lower_quantile - t)
     naive_upper_quantile = min(1.0, upper_quantile + t)
+    # print("nonpriv quantiles:", lower_quantile, upper_quantile)
+    # print("naive quantiles:", naive_lower_quantile, naive_upper_quantile)
 
     if (em_lower_quantile == None or em_upper_quantile == None) and naive == False:
-        print("Computing fancy quantiles")
+        # print("Computing fancy quantiles")
         naive_lower_rank = np.floor(n*naive_lower_quantile)
         naive_upper_rank = np.ceil(n*naive_upper_quantile)
         em_lower_quantile, em_upper_quantile = computeFancyPrivQuantilesEfficient(n, alpha, lower_bound, upper_bound, epsilon, granularity,
             naive_lower=naive_lower_rank, naive_upper=naive_upper_rank)
+        # print("fancy quantiles", em_lower_quantile, em_upper_quantile)
 
     if naive:
         target_lower_quantile = naive_lower_quantile
@@ -242,3 +258,46 @@ def dpCIsExp(x, lower_bound, upper_bound, epsilon, hyperparameters, num_trials):
     results = [(lower_results[i]-granularity, upper_results[i]+granularity) for i in range(num_trials)]
     #print("Result: ", results[0])
     return results
+
+def test(x, lower_bound, upper_bound, epsilon, hyperparameters, num_trials):
+    return [(-10, -9)]*num_trials
+
+# # Testing:
+# x = list(np.arange(0, 1000, 0.5))
+# n = len(x)
+# lower_bound = 0
+# upper_bound = 1000
+# epsilon = 6
+# alpha = 0.05
+# beta = 0.01
+# nonpriv_beta = (alpha-beta)/(1.-beta) # compute nonprivate failure probability
+# lower_quantile, upper_quantile = pub.getConfIntervalQuantiles(n, nonpriv_beta) # private algs take in non-private quantiles
+# hyperparameters = {'em_granularity': 0.1, 'quantile': 0.5, 'beta': beta, 'alpha': alpha, 'cdp': True}
+# hyperparameters['lower_quantile'] = lower_quantile
+# hyperparameters['upper_quantile'] = upper_quantile
+# print("nonpriv quantiles:", lower_quantile, upper_quantile)
+# num_trials = 10
+# dpCIsExp(x, lower_bound, upper_bound, epsilon, hyperparameters, num_trials)
+
+# n = 9000
+# lower_bound = 0
+# upper_bound = 50
+# data_range = upper_bound - lower_bound
+# epsilon = 1.0
+# granularity = 0.1
+# alpha = 0.05
+# print("fancy quantiles:", computeFancyPrivQuantiles(n, alpha, lower_bound, upper_bound, epsilon, granularity))
+
+# print("fancy efficient:", computeFancyPrivQuantiles(n, alpha, lower_bound, upper_bound, epsilon, granularity))
+
+# beta = 0.01
+# eps_per_run = epsilon/math.sqrt(2.0)
+# beta_per_run = beta/2.0
+# nonpriv_beta = (alpha-beta)/(1.-beta) # compute nonprivate failure probability
+# lower_quantile, upper_quantile = pub.getConfIntervalQuantiles(n, nonpriv_beta)
+# t = 1/(n*eps_per_run) * np.log((data_range-granularity)/(granularity*beta_per_run))
+# naive_lower = np.floor(n*(lower_quantile - t))
+# naive_upper = np.ceil(n*(upper_quantile + t))
+# print("naive_ranks:", naive_lower, naive_upper)
+# print("fancy efficient2:", computeFancyPrivQuantilesEfficient(n, alpha, lower_bound, upper_bound, epsilon, granularity, 
+#     naive_lower=naive_lower, naive_upper=naive_upper))

@@ -1,5 +1,6 @@
 import numpy as np
 import math
+import scipy.stats as st
 
 delta = 10**(-6)
 
@@ -7,7 +8,7 @@ def compute_t(n, epsilon, beta, sensitivity, scale=None, gaussian=True, cdp=True
     if gaussian:
         if scale == None:
             scale = gaussian_scale(epsilon, sensitivity, cdp=cdp) 
-        t = scale * math.sqrt(2.0 * np.log(1.0/beta)) / n
+        t = st.norm.ppf(1.0-beta, loc=0, scale=scale) / n # Gaussian tail bound, less accurate: scale * math.sqrt(2.0 * np.log(1.0/beta)) / n
     else: # laplace
         if scale == None:
             scale = laplace_scale(epsilon, sensitivity) 
@@ -31,7 +32,7 @@ def laplace_scale(epsilon, sensitivity):
 def gaussian_scale(epsilon, sensitivity, cdp=True):
     if cdp:
         # Adding N(0, sigma^2) noise satisfies GS/(2sigma^2)-zCDP
-        # so N(0, (1/eps)^2) and GS=1 satisfies eps^2/2-zDP = rho-zCDP
+        # so N(0, (1/eps)^2) and GS=1 satisfies eps^2/2-zCDP = rho-zCDP
         return float(sensitivity) / epsilon
     else:
         return float(sensitivity) * math.sqrt(2.0*np.log(1.26/delta)) / epsilon

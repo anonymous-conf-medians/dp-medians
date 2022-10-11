@@ -314,6 +314,7 @@ def dpCIsBS(x, lower_bound, upper_bound, epsilon, hyperparameters, num_trials):
     assert n is not None and beta is not None
     bs_sensitivity = 1.0
     t = common.compute_t(n, eps_per_step, beta_per_step, bs_sensitivity, gaussian=gaussian, cdp=cdp) 
+    # print("t:", t, "n:", n, "num steps:", num_steps, "eps_per_run:", eps_per_run, "eps_per_step:", eps_per_step, "beta_per_step:", beta_per_step)
 
     if separate_runs: # two-shot
         # Set save path (to visualize one run)
