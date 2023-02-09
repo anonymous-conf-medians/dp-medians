@@ -1,6 +1,5 @@
 import numpy as np
 import math
-from monotonic_proj import monotonic_proj
 import common
 
 def computeEpsPerStep(eps_per_run, num_steps, step, cdp):
@@ -266,7 +265,7 @@ def dpCIsBS(x, lower_bound, upper_bound, epsilon, hyperparameters, num_trials):
         :param granularity: This parameter helps avoid pathological behavior when values are tightly concentrated (e.g all equal). 
                         It is a lower bound on the algorithm's accuracy. Defaults to 0.001
         :param cdp: Boolean, true if DP definition in use is zCDP.
-        param monotonic: Boolean. If True, will force counts to be monotonic before calculating CI. 
+        param monotonic: Boolean. If True, will force counts to be monotonic before calculating CI. Not included for now.
     :param num_trials: Number of fresh DP median estimates to generate using dataset x.
     :return: List of 1/2 eps-DP estimates for the median of x.
     """
