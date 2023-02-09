@@ -3,7 +3,6 @@ import analysis_for_data as analysis
 import exponential_median as exp_median
 import noise_addition_for_smooth_sens as ss_median
 import binary_search_median as bisearch_median
-import fancy_bs_median as fancy_bs
 import cdf_median as cdf_median
 import grad_descent_median as gd_median
 import bs_cdf_median
@@ -220,7 +219,7 @@ def runCIAlgs(dataset_name, num_trials=2, num_params=1, param_string='', rho=1, 
 		callRunAnalyzeAlgs(dataset_name_list, name, dir_path, num_datasets, num_trials, num_params, param_string, n_list, rho_list, range_center_list, range_scale_list, 
 			true_median_list, alpha_list, beta_list, quantile_list, granularity_list, function_name, hyperparameters, rerun_algs, start_param, gen_preprocess, compare_to_nonparametric)
 
-	# # CDF monotonic -- DEPRECATED
+	# # CDF monotonic -- not used in paper; interval validity not theoretically justified yet
 	# name = 'CDFmedian_mon'
 	# if name in alg_list:
 		# print("starting CDF mon")
@@ -228,24 +227,6 @@ def runCIAlgs(dataset_name, num_trials=2, num_params=1, param_string='', rho=1, 
 		# function_name = cdf_median.dpCIsCDF
 		# callRunAnalyzeAlgs(dataset_name_list, name, dir_path, num_datasets, num_trials, num_params, param_string, n_list, rho_list, range_center_list, range_scale_list, 
 		# 	true_median_list, alpha_list, beta_list, quantile_list, granularity_list, function_name, hyperparameters, rerun_algs, start_param, gen_preprocess, compare_to_nonparametric)
-
-	# # BS one-shot --- DEPRECATED
-	# name = 'BSmedian'
-	# if name in alg_list:
-		# print("starting BS one-shot")
-		# hyperparameters = {} # Include extra hyperparameters beyond common ones
-		# function_name = bisearch_median.dpCIsBS
-		# callRunAnalyzeAlgs(dataset_name_list, name, dir_path, num_datasets, num_trials, num_params, param_string, n_list, rho_list, range_center_list, range_scale_list, 
-		#	true_median_list, alpha_list, beta_list, quantile_list, granularity_list, function_name, hyperparameters, rerun_algs, start_param, gen_preprocess, compare_to_nonparametric)
-
-	# # BS one-shot noisy start -- DEPRECATED
-	# name = 'BSmedian_noisy_start'
-	# if name in alg_list:
-		# print("starting BS one-shot noisy start")
-		# hyperparameters = {'noisy_start':True} # Include extra hyperparameters beyond common ones
-		# function_name = bisearch_median.dpCIsBS
-		# callRunAnalyzeAlgs(dataset_name_list, name, dir_path, num_datasets, num_trials, num_params, param_string, n_list, rho_list, range_center_list, range_scale_list, 
-		#	true_median_list, alpha_list, beta_list, quantile_list, granularity_list, function_name, hyperparameters, rerun_algs, start_param, gen_preprocess, compare_to_nonparametric)
 
 	# # BS two-shot
 	name = 'BSmedian_sep'
@@ -264,15 +245,6 @@ def runCIAlgs(dataset_name, num_trials=2, num_params=1, param_string='', rho=1, 
 		function_name = bisearch_median.dpCIsBS
 		callRunAnalyzeAlgs(dataset_name_list, name, dir_path, num_datasets, num_trials, num_params, param_string, n_list, rho_list, range_center_list, range_scale_list, 
 			true_median_list, alpha_list, beta_list, quantile_list, granularity_list, function_name, hyperparameters, rerun_algs, start_param, gen_preprocess, compare_to_nonparametric)
-
-	# # BS two-shot noisy start
-	# name = 'BSmedian_sep_noisy_start'
-	# if name in alg_list:
-		# print("starting BS two-shot noisy start")
-		# hyperparameters = {'separate_runs':True, 'noisy_start':True} # Include extra hyperparameters beyond common ones
-		# function_name = bisearch_median.dpCIsBS
-		# callRunAnalyzeAlgs(dataset_name_list, name, dir_path, num_datasets, num_trials, num_params, param_string, n_list, rho_list, range_center_list, range_scale_list, 
-		#	true_median_list, alpha_list, beta_list, quantile_list, granularity_list, function_name, hyperparameters, rerun_algs, start_param, gen_preprocess, compare_to_nonparametric)
 
 	# # # Adaptive BS two-shot
 	name = 'AdaBSmedian_sep'
@@ -301,14 +273,7 @@ def runCIAlgs(dataset_name, num_trials=2, num_params=1, param_string='', rho=1, 
 		callRunAnalyzeAlgs(dataset_name_list, name, dir_path, num_datasets, num_trials, num_params, param_string, n_list, rho_list, range_center_list, range_scale_list, 
 			true_median_list, alpha_list, beta_list, quantile_list, granularity_list, function_name, hyperparameters, rerun_algs, start_param, gen_preprocess, compare_to_nonparametric)
 
-	# # BS remove nodes -- DEPRECATED
-	# name = 'BSmedian_tst'
-	# if name in alg_list:
-		# print("starting BS remove nodes")
-		# hyperparameters = {'tst':True} # Include extra hyperparameters beyond common ones
-		# function_name = bisearch_median.dpCIsBS
-		# callRunAnalyzeAlgs(dataset_nam_list, name, dir_path, num_datasets, num_trials, num_params, param_string, n_list, rho_list, range_center_list, range_scale_list, 
-		#	true_median_list, alpha_list, beta_list, quantile_list, granularity_list, function_name, hyperparameters, rerun_algs, start_param, gen_preprocess, compare_to_nonparametric)
 
 	print("finished!")
+
 

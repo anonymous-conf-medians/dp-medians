@@ -406,6 +406,7 @@ def postProcessedCDF(tree, epsilon, monotonic=False):
         # variances.append(variance/n**2) # scaling by the normalization
         # variances.append(variance)
 
+    # We may be able to do better if we project the CDF onto a monotonic projection, but we have not theoretically justified the resulting validity yet.
     if monotonic:
         percents = monotonic_proj(vals, percents)
 
